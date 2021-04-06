@@ -6,6 +6,10 @@ const shortid = require("shortid");
 const bodyParser = require("body-parser");
 const upload = multer({ dest: 'tmp' })
 const fs = require("fs")
+const redis = require('../config/redis');
+const { promisify } = require("util");
+
+const getAsync = promisify(redis.get).bind(redis);
 
 class SongController {
   constructor() {
@@ -21,7 +25,15 @@ class SongController {
 
   async index(req, res) {
     try {
-      const { name, page = 0, size = 10  } = req.query;
+      const { name, page = 0, size = 10 } = req.query;
+
+      if(redis) {
+        const data = await getAsync(JSON.stringify(req.query))
+
+        if(data) {
+          return res.status(200).send(JSON.parse(data));
+        } 
+      }
     
       const songQuery = Song.query();
   
@@ -30,6 +42,10 @@ class SongController {
       }
      
       const songs = await songQuery.page(page, size);
+
+      if(redis) {
+        redis.set(JSON.stringify(req.query), JSON.stringify(songs))
+      }
   
       return res.status(200).send(songs)
     } catch(err) {
@@ -58,6 +74,14 @@ class SongController {
         image_path: imageURL,
         user_id: req.user.id
       })
+
+      if(redis) {
+        redis.flushall("ASYNC", (err) => {
+          if(err) {
+            console.log("Redis error in flush all -> ", err)
+          }
+        })
+      }
   
       return res.status(200).send(song)
     } catch(err) {

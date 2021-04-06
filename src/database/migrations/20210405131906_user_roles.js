@@ -1,6 +1,7 @@
 
 exports.up = function(knex) {
   return knex.schema.createTable("user_roles", (table) => {
+    table.increments('id')
     table
     .integer('user_id')
     .unsigned()

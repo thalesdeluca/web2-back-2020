@@ -2,7 +2,7 @@ const { Router } = require("express");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken")
 const bodyParser = require("body-parser");
-const  { User } = require("../models")
+const  { User, Role } = require("../models")
 
 class AuthController {
   constructor() {
@@ -36,7 +36,7 @@ class AuthController {
         return res.status(404).send({ code: "NOT_FOUND", message: "Usuário não encontrado. Verifique suas credenciais e tente novamente"})
       }
   
-      const isPasswordSame = bcyrpt.compareSync(password, user.password);
+      const isPasswordSame = bcrypt.compareSync(password, user.password);
   
       if(!isPasswordSame) {
         return res.status(401).send({ code: "WRONG_CREDENTIALS", message: "Senha incorreta. Verifique suas credenciais e tente novamente"})
@@ -44,8 +44,9 @@ class AuthController {
   
       const accessToken = jwt.sign({ uid: user.id }, process.env.SECRET );
   
-      return response.status(200).send({ access_token: accessToken })
+      return res.status(200).send({ access_token: accessToken })
     } catch(err) {
+      console.log(err)
       return res.status(500).send({ code: 'INTERNAL_ERROR', message: "Houve um erro interno, tente novamente mais tarde"})
     }
    
@@ -85,10 +86,16 @@ class AuthController {
       }
 
   
-      const userRegistered = await User.query().insert({
-        email,
-        username,
-        password
+      const userRegistered = await User.transaction(async trx => {
+        const userSaved = await User.query(trx).insert({
+          email,
+          username,
+          password
+        })
+
+        const role = await Role.query(trx).where("slug", "user").first();
+
+        return await userSaved.$relatedQuery("roles", trx).relate(role);
       })
   
       const accessToken = jwt.sign({ uid: userRegistered.id }, process.env.SECRET);
