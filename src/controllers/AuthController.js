@@ -4,6 +4,12 @@ const jwt = require("jsonwebtoken")
 const bodyParser = require("body-parser");
 const  { User, Role } = require("../models")
 
+
+const ERRORS = {
+  "EMAIL_TAKEN": "Email already registered",
+  "USERNAME_TAKEN": "Username already registered"
+}
+
 class AuthController {
   constructor() {
     this.path = "/auth";
@@ -33,21 +39,21 @@ class AuthController {
       const user = await userQuery.first();
   
       if(!user) {
-        return res.status(404).send({ code: "NOT_FOUND", message: "Usuário não encontrado. Verifique suas credenciais e tente novamente"})
+        return res.status(404).send({ code: "NOT_FOUND", message: "User not found. Check your credentials and try again"})
       }
   
       const isPasswordSame = bcrypt.compareSync(password, user.password);
   
       if(!isPasswordSame) {
-        return res.status(401).send({ code: "WRONG_CREDENTIALS", message: "Senha incorreta. Verifique suas credenciais e tente novamente"})
+        return res.status(401).send({ code: "WRONG_CREDENTIALS", message: "Wrong password. Check your credentials and try again"})
       }
   
       const accessToken = jwt.sign({ uid: user.id }, process.env.SECRET );
   
-      return res.status(200).send({ access_token: accessToken })
+      return res.status(200).send({ access_token: accessToken, user: user.username })
     } catch(err) {
       console.log(err)
-      return res.status(500).send({ code: 'INTERNAL_ERROR', message: "Houve um erro interno, tente novamente mais tarde"})
+      return res.status(500).send({ code: 'INTERNAL_ERROR', message: "An internal error has occurred, please try again later"})
     }
    
   }
@@ -59,7 +65,7 @@ class AuthController {
       const userQuery = User.query();
 
       if(!((username || email) && password)) {
-        return res.status(400).send({ code: "MISSING_FIELDS", message: "Preencha todos os campos para prosseguir com o cadastro."})
+        return res.status(400).send({ code: "MISSING_FIELDS", message: "Fill all fields to complete your registration"})
       }
   
       if(email) {
@@ -82,7 +88,7 @@ class AuthController {
           errors.push("USERNAME_TAKEN")
         }
         
-        return res.status(403).send({ code: "ALREADY_TAKEN", message: errors })
+        return res.status(403).send({ code: "ALREADY_TAKEN", message: errors.reduce((acc, current) => `${acc}\n${ERRORS[current]}`, "") })
       }
 
   
@@ -100,10 +106,10 @@ class AuthController {
   
       const accessToken = jwt.sign({ uid: userRegistered.id }, process.env.SECRET);
   
-      return res.status(200).send({ access_token: accessToken })
+      return res.status(200).send({ access_token: accessToken, user: userRegistered.name })
     } catch(err) {
       console.log(err)
-      return res.status(500).send({ code: 'INTERNAL_ERROR', message: "Houve um erro interno, tente novamente mais tarde"})
+      return res.status(500).send({ code: 'INTERNAL_ERROR', message: "An internal error has occurred, please try again later"})
     }
     
   }

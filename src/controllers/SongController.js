@@ -49,7 +49,7 @@ class SongController {
   
       return res.status(200).send(songs)
     } catch(err) {
-      return res.status(500).send({ code: 'INTERNAL_ERROR', message: "Houve um erro interno, tente novamente mais tarde"})
+      return res.status(500).send({ code: 'INTERNAL_ERROR', message: "An internal error has occurred, please try again later"})
     }
   }
 
@@ -86,7 +86,7 @@ class SongController {
       return res.status(200).send(song)
     } catch(err) {
       console.log(err)
-      return res.status(500).send({ code: 'INTERNAL_ERROR', message: "Houve um erro interno, tente novamente mais tarde"})
+      return res.status(500).send({ code: 'INTERNAL_ERROR', message: "An internal error has occurred, please try again later"})
     }
   }
 }
