@@ -1,9 +1,6 @@
-const redis = require("redis");
-require("dotenv").config();
-
-const client = redis.createClient({
+const cache = require("express-redis-cache")({
   host: process.env.REDIS_HOST,
   port: process.env.REDIS_PORT
 });
 
-module.exports = client
+module.exports = cache

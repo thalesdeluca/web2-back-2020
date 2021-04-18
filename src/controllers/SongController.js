@@ -1,39 +1,32 @@
 const { Router, response } = require("express");
-const { checkAuth } = require("../middlewares/Auth");
+const AuthMiddleware = require("../middlewares/Auth");
 const multer = require('multer');
 const { Song } = require("../models");
 const shortid = require("shortid");
 const bodyParser = require("body-parser");
 const upload = multer({ dest: 'tmp' })
 const fs = require("fs")
-const redis = require('../config/redis');
-const { promisify } = require("util");
+const CacheMiddleware = require('../middlewares/CacheMiddleware');
+const cache = require("../config/redis");
 
-const getAsync = promisify(redis.get).bind(redis);
+require('dotenv').config()
+
 
 class SongController {
   constructor() {
     this.path = "/songs";
     this.router = Router();
-    this.initRoutes([checkAuth]);
+    this.initRoutes(AuthMiddleware);
   }
 
   initRoutes(localMiddlewares = []) {
     this.router.post(this.path, ...localMiddlewares, upload.single("image"),this.save);
-    this.router.get(this.path, ...localMiddlewares, bodyParser.json(), this.index);
+    this.router.get(this.path, ...localMiddlewares, CacheMiddleware("songs"),bodyParser.json(), this.index);
   }
 
   async index(req, res) {
     try {
       const { name, page = 0, size = 10 } = req.query;
-
-      if(redis) {
-        const data = await getAsync(JSON.stringify(req.query))
-
-        if(data) {
-          return res.status(200).send(JSON.parse(data));
-        } 
-      }
     
       const songQuery = Song.query();
   
@@ -42,10 +35,6 @@ class SongController {
       }
      
       const songs = await songQuery.page(page, size);
-
-      if(redis) {
-        redis.set(JSON.stringify(req.query), JSON.stringify(songs))
-      }
   
       return res.status(200).send(songs)
     } catch(err) {
@@ -75,13 +64,7 @@ class SongController {
         user_id: req.user.id
       })
 
-      if(redis) {
-        redis.flushall("ASYNC", (err) => {
-          if(err) {
-            console.log("Redis error in flush all -> ", err)
-          }
-        })
-      }
+      cache.del("songs*", () => {});
   
       return res.status(200).send(song)
     } catch(err) {

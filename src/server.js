@@ -4,13 +4,13 @@ const cors = require("cors");
 
 const controllers = require("./controllers");
 require("dotenv").config();
-const redis = require('./config/redis')
 
 const app = express();
 
 app.use(cors());
 
 app.use(express.static('public'));
+
 
 Object.values(controllers).forEach(Controller => {
   const controller = new Controller();
